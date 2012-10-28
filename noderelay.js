@@ -44,6 +44,9 @@ _.each(cfg.pool, function (params, port) {
     //Sets server name to the port
     server.name = port
 
+    //Sets if server is used for dynamic redirection
+    server.isDynamic = _.isEmpty(params)
+
     //Sets server listening event handler
     server.on('listening', function () {
         console.log('NodeRelay iniciado y esperando conexiones en ' + this.address().address + ':' + this.address().port)
@@ -58,8 +61,22 @@ _.each(cfg.pool, function (params, port) {
 
         console.log('New connection from ' + name)
 
-        //Tracks remote host to which port is connected
-        hostTrack[socket.remoteAddress] = server.name
+        //Checks if it's a server for dynamic redirection
+        if (server.isDynamic) {
+            //Checks if exists a previous record for this host
+            if (_.has(hostTrack, socket.remoteAddress)) {
+                //Updates params to these that last server uses
+                params = cfg.pool[hostTrack[socket.remoteAddress]]
+            } else {
+                console.log('Host ' + name + ' has not been track! Closing connection.')
+                //Ends connection
+                socket.end()
+                return
+            }
+        } else {
+            //Tracks remote host to which port is connected
+            hostTrack[socket.remoteAddress] = server.name
+        }
 
         //Prepares socket options and makes destiny connection
         dstOptions = makeConnectionOptions(params.dstPort, params.dstHost, params.srcHost)
