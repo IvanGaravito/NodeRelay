@@ -50,9 +50,9 @@ ready, simply run the app:
 
 ## Getting Started
 
-[NodeRelay](https://github.com/IvanGaravito/NodeRelay) doesn't need JavaScript
-neither programming knowledge. All you need is to understand the configuration
-options.
+For using [NodeRelay](https://github.com/IvanGaravito/NodeRelay) you don't need
+JavaScript neither programming knowledge. All you need is to understand the
+configuration options.
 
 ### Configuration
 
@@ -113,7 +113,7 @@ module.exports = {
         }
     }
 }
-``
+```
 
 ## License 
 
