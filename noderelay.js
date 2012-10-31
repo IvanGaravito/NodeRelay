@@ -82,20 +82,14 @@ _.each(cfg.pool, function (params, port) {
         dstOptions = makeConnectionOptions(params.dstPort, params.dstHost, params.srcHost)
         dstSocket = net.connect(dstOptions)
 
+        //Pipes local/destiny sockets
+        dstSocket.pipe(socket).pipe(dstSocket)
+
         //Connection event handler
         dstSocket.on('connect', function () {
             console.log('Remote connection successfully. Creating pipe ' +
                 name + ' <=> ' + params.dstHost + ':' + params.dstPort
             )
-            var self = this
-            //Pipes local/destiny sockets
-            self.pipe(socket).pipe(self)
-        })
-
-        //When server accepts a new connection, the new socket receives data
-        //before detiny connection is established
-        socket.once('data', function (buffer) {
-            dstSocket.write(buffer)
         })
 
         //Connection closed event handler
