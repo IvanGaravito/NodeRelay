@@ -68,7 +68,7 @@ _.each(cfg.pool, function (params, port) {
                 //Updates params to these that last server uses
                 params = cfg.pool[hostTrack[socket.remoteAddress]]
                 //Uses the server port as the fixed port
-                params.port = server.name
+                params.dstPort = server.name
             } else {
                 console.log('Host ' + name + ' has not been track! Closing connection.')
                 //Ends connection
