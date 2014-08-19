@@ -14,13 +14,7 @@ on ports. This helps you to:
 ## Installation
 
 First of all you need to install [Node.js](http://nodejs.org/). Download
-[NodeRelay](https://github.com/IvanGaravito/NodeRelay) and install the module
-[Underscore.js](http://underscorejs.org/) using npm:
-
-``` bash
-  $ cd /path/to/NodeRelay
-  $ npm install underscore
-```
+[NodeRelay](https://github.com/IvanGaravito/NodeRelay).
 
 ## Quick Start
 
