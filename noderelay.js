@@ -1,11 +1,20 @@
+'use strict'
+
 /*
 	LIBRARIES
 */
-var _ = require('underscore')._
-  , net = require('net')
+var net = require('net')
 
 /*
-	CONFIG
+  FUNCTIONS
+*/
+var forEach = require('./lib/forEach')
+  , invoke = require('./lib/invoke')
+  , isEmpty = require('./lib/invoke')
+  , merge = require('./lib/merge')
+
+/*
+  CONFIG
 */
 var cfg = require('./etc/config') || {}                     //User defined config
   , cfgDefaults = require('./etc/config.defaults') || {}    //Default config
@@ -14,7 +23,7 @@ var cfg = require('./etc/config') || {}                     //User defined confi
   , serverPool = {}         //List of servers accepting connections
 
 //Prepares configuration
-cfg = _.defaults(cfg, cfgDefaults)
+cfg = merge(cfg, cfgDefaults)
 
 /*
 	INITIALIZATION
@@ -32,7 +41,7 @@ process.on('uncaughtException', function (err) {
 console.log('Creating server pool...')
 
 //Creates server pool
-_.each(cfg.pool, function (params, port) {
+forEach(cfg.pool, function (params, port) {
     console.log('Creating new server for ' + cfg.localHost + ':' + port + '...')
 
     //Creates a new server
@@ -45,7 +54,7 @@ _.each(cfg.pool, function (params, port) {
     server.name = port
 
     //Sets if server is used for dynamic redirection
-    server.isDynamic = _.isEmpty(params)
+    server.isDynamic = isEmpty(params)
 
     //Sets server listening event handler
     server.on('listening', function () {
@@ -64,7 +73,7 @@ _.each(cfg.pool, function (params, port) {
         //Checks if it's a server for dynamic redirection
         if (server.isDynamic) {
             //Checks if exists a previous record for this host
-            if (_.has(hostTrack, socket.remoteAddress)) {
+            if (socket.remoteAddress in hostTrack) {
                 //Updates params to these that last server uses
                 params = cfg.pool[hostTrack[socket.remoteAddress]]
                 //Uses the server port as the fixed port
@@ -141,7 +150,7 @@ _.each(cfg.pool, function (params, port) {
 })
 
 //Commands each serverat pool to start listening
-_.invoke(serverPool, 'startListen')
+invoke(serverPool, 'startListen')
 
 console.log('NodeRelay started!')
 
@@ -153,13 +162,13 @@ function _exit() {
 
     //Closing each server at pool
     console.log('Closing servers...')
-    _.invoke(serverPool, 'close')
+    invoke(serverPool, 'close')
 
     console.log('Closing connections...')
 
     //Closing connections
-    _.each(connList, function (item) {
-        console.log('Killing worker ' + item.name + '...')
+    forEach(connList, function (item) {
+        console.log('Ending connection ' + item.name + '...')
         item.sockets.end()
     })
 
@@ -172,7 +181,7 @@ function makeConnectionOptions(port, host, localAddress) {
       , host: host  //Remote host to connect to
     }
     //Checks if defined a local address to get out
-    if (!_.isEmpty(localAddress) && localAddress !== '0.0.0.0') {
+    if (!isEmpty(localAddress) && localAddress !== '0.0.0.0') {
         opt.localAddress = localAddress
     }
     return opt
