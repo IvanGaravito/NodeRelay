@@ -18,12 +18,21 @@ var forEach = require('./lib/forEach')
 */
 var cfg = require('./etc/config') || {}                     //User defined config
   , cfgDefaults = require('./etc/config.defaults') || {}    //Default config
-  , connList = []           //List of socket connections
-  , hostTrack = {}          //Track of hosts connected to which server from the pool
-  , serverPool = {}         //List of servers accepting connections
 
 //Prepares configuration
 cfg = merge(cfg, cfgDefaults)
+
+/*
+  GLOBAL VARS
+*/
+var connList = []           //List of socket connections
+  , hostTrack = {}          //Track of hosts connected to which server from the pool
+  , serverPool = {}         //List of servers accepting connections
+
+//Direct access vars
+var cfgPool
+
+cfgPool = cfg.pool
 
 /*
 	INITIALIZATION
@@ -41,43 +50,64 @@ process.on('uncaughtException', function (err) {
 console.log('Creating server pool...')
 
 //Creates server pool
-forEach(cfg.pool, function (params, port) {
-    console.log('Creating new server for ' + cfg.localHost + ':' + port + '...')
+forEach(cfgPool, function (params, port) {
+    var server, serverName, serverOn, isDynamic, localHost
+
+    localHost = cfg.localHost
+
+    console.log('Creating new server for ' + localHost + ':' + port + '...')
 
     //Creates a new server
-    var server = serverPool[port] = net.createServer()
+    server = serverPool[port] = net.createServer()
+    serverOn = server.on.bind(server)
 
     //Sets maximum retry times
     server.listenRetryTimes = cfg.listenRetryTimes
 
     //Sets server name to the port
-    server.name = port
+    serverName = server.name = port
 
     //Sets if server is used for dynamic redirection
-    server.isDynamic = isEmpty(params)
+    isDynamic = server.isDynamic = isEmpty(params)
 
     //Sets server listening event handler
-    server.on('listening', function () {
-        console.log('NodeRelay iniciado y esperando conexiones en ' + this.address().address + ':' + this.address().port)
+    serverOn('listening', function () {
+        var address
+        address = this.address()
+        console.log('NodeRelay iniciado y esperando conexiones en ' + address.address + ':' + address.port)
     })
 
     //Sets server connection event handler
-    server.on('connection', function (socket) {
+    serverOn('connection', function (socket) {
         var dstOptions                  //Destiny connection options
           , dstSocket                   //Socket for destiny connection
-          , name = socket.remoteAddress + ':' + socket.remotePort   //Connection name is host:port
-          , stamp = new Date()          //Local connection time stamp
+          , dstHost
+          , dstPort
+          , name
+          , remoteAddress
+          , remotePort
+          , stamp
+          , closeFrom
+
+        //Local connection time stamp
+        stamp = new Date()
+
+        //Caches vars
+        remoteAddress = socket.remoteAddress
+        remotePort = socket.remotePort
+        name = remoteAddress + ':' + remotePort   //Connection name is host:port
+        serverName = server.name
 
         console.log('New connection from ' + name)
 
         //Checks if it's a server for dynamic redirection
-        if (server.isDynamic) {
+        if (isDynamic) {
             //Checks if exists a previous record for this host
-            if (socket.remoteAddress in hostTrack) {
+            if (hostTrack.hasOwnProperty(remoteAddress)) {
                 //Updates params to these that last server uses
-                params = cfg.pool[hostTrack[socket.remoteAddress]]
+                params = cfgPool[hostTrack[remoteAddress]]
                 //Uses the server port as the fixed port
-                params.dstPort = server.name
+                params.dstPort = serverName
             } else {
                 console.log('Host ' + name + ' has not been track! Closing connection.')
                 //Ends connection
@@ -86,11 +116,14 @@ forEach(cfg.pool, function (params, port) {
             }
         } else {
             //Tracks remote host to which port is connected
-            hostTrack[socket.remoteAddress] = server.name
+            hostTrack[remoteAddress] = serverName
         }
 
+        dstHost = params.dstHost
+        dstPort = params.dstPort
+
         //Prepares socket options and makes destiny connection
-        dstOptions = makeConnectionOptions(params.dstPort, params.dstHost, params.srcHost)
+        dstOptions = makeConnectionOptions(dstPort, dstHost, params.srcHost)
         dstSocket = net.connect(dstOptions)
 
         //Pipes local/destiny sockets
@@ -98,17 +131,30 @@ forEach(cfg.pool, function (params, port) {
 
         //Connection event handler
         dstSocket.on('connect', function () {
-            console.log('Remote connection successfully. Creating pipe ' +
-                name + ' <=> ' + params.dstHost + ':' + params.dstPort
-            )
+          console.log('Remote connection successfully. Creating pipe ' + name + ' <=> ' + dstHost + ':' + dstPort)
+        })
+
+        dstSocket.on('close', function () {
+          if (closeFrom === undefined) {
+            closeFrom = 'rmte'
+            console.log('Remote connection closed. Closing original connection...')
+            socket.end()
+          } else {
+            console.log('Pipe ' + name + ' <=> ' + dstHost + ':' + dstPort + ' finished')
+            delete connList[name]
+          }
         })
 
         //Connection closed event handler
         socket.on('close', function (had_error) {
-            console.log('Pipe ' +
-                name + ' <=> ' + params.dstHost + ':' + params.dstPort + ' finished'
-            )
+          if (closeFrom === undefined) {
+            closeFrom = 'orig'
+            console.log('Original connection closed. Closing remote connection...')
+            socket.end()
+          } else {
+            console.log('Pipe ' + name + ' <=> ' + dstHost + ':' + dstPort + ' finished')
             delete connList[name]
+          }
         })
 
         //Records connections
@@ -118,10 +164,10 @@ forEach(cfg.pool, function (params, port) {
         }
     })
     //Server closed
-    server.on('close', function () {
+    serverOn('close', function () {
     })
     //Server error handling
-    server.on('error', function (e) {
+    serverOn('error', function (e) {
         //Checks if cannot bind to port
         if (e.code == 'EADDRINUSE') {
             var retries = this.listenRetryTimes--   //Retry times left
@@ -131,7 +177,7 @@ forEach(cfg.pool, function (params, port) {
                 //Schedule next retry
                 setTimeout(server.startListen, cfg.listenRetryTimeout)
             } else {
-                console.error('Cannot bind NodeRelay at ' + cfg.localHost + ':' + this.name + '. Exiting!')
+                console.error('Cannot bind NodeRelay at ' + localHost + ':' + this.name + '. Exiting!')
                 process.exit(1)
             }
         } else {
@@ -139,12 +185,14 @@ forEach(cfg.pool, function (params, port) {
         }
     })
     server.startListen = function () {
+        var name
+        name = this.name
         if(cfg.localHost === '0.0.0.0') {
-            console.log('Binding server to 0.0.0.0:' + this.name + '...')
-            server.listen(this.name)
+            console.log('Binding server to 0.0.0.0:' + name + '...')
+            server.listen(name)
         } else {
-            console.log('Binding server to ' + cfg.localHost + ':' + this.name + '...')
-            server.listen(this.name, cfg.localHost)
+            console.log('Binding server to ' + localHost + ':' + name + '...')
+            server.listen(name, localHost)
         }
     }
 })
