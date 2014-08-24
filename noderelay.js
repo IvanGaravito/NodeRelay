@@ -78,14 +78,14 @@ forEach(cfgPool, function (params, port) {
     })
 
     //Sets server connection event handler
-    serverOn('connection', function (socket) {
-        var dstOptions                  //Destiny connection options
-          , dstSocket                   //Socket for destiny connection
-          , dstHost
-          , dstPort
+    serverOn('connection', function (origSocket) {
+        var rdirOptions                  //Destiny connection options
+          , rdirSocket                   //Socket for destiny connection
+          , rdirHost
+          , rdirPort
           , name
-          , remoteAddress
-          , remotePort
+          , origAddress
+          , origPort
           , stamp
           , closeFrom
 
@@ -93,9 +93,9 @@ forEach(cfgPool, function (params, port) {
         stamp = new Date()
 
         //Caches vars
-        remoteAddress = socket.remoteAddress
-        remotePort = socket.remotePort
-        name = remoteAddress + ':' + remotePort   //Connection name is host:port
+        origAddress = origSocket.remoteAddress
+        origPort = origSocket.remotePort
+        name = origAddress + ':' + origPort   //Connection name is host:port
         serverName = server.name
 
         console.log('New connection from ' + name)
@@ -103,63 +103,66 @@ forEach(cfgPool, function (params, port) {
         //Checks if it's a server for dynamic redirection
         if (isDynamic) {
             //Checks if exists a previous record for this host
-            if (hostTrack.hasOwnProperty(remoteAddress)) {
+            if (hostTrack.hasOwnProperty(origAddress)) {
                 //Updates params to these that last server uses
-                params = cfgPool[hostTrack[remoteAddress]]
+                params = cfgPool[hostTrack[origAddress]]
                 //Uses the server port as the fixed port
-                params.dstPort = serverName
+                params.rdirPort = serverName
             } else {
-                console.log('Host ' + name + ' has not been track! Closing connection.')
+                console.log('Host ' + name + ' has not been tracked! Closing connection.')
                 //Ends connection
-                socket.end()
+                origSocket.end()
                 return
             }
         } else {
             //Tracks remote host to which port is connected
-            hostTrack[remoteAddress] = serverName
+            hostTrack[origAddress] = serverName
         }
 
-        dstHost = params.dstHost
-        dstPort = params.dstPort
+        rdirHost = params.rdirHost
+        rdirPort = params.rdirPort
 
-        //Prepares socket options and makes destiny connection
-        dstOptions = makeConnectionOptions(dstPort, dstHost, params.srcHost)
-        dstSocket = net.connect(dstOptions)
+        //Prepares socket options and makes redirection connection
+        rdirOptions = {
+            port: rdirPort  //Remote port to connect to
+          , host: rdirHost  //Remote host to connect to
+        }
+        rdirSocket = net.connect(rdirOptions)
 
         //Pipes local/destiny sockets
-        dstSocket.pipe(socket).pipe(dstSocket)
+        rdirSocket.pipe(origSocket).pipe(rdirSocket)
 
         //Connection event handler
-        dstSocket.on('connect', function () {
-          console.log('Remote connection successfully. Creating pipe ' + name + ' <=> ' + dstHost + ':' + dstPort)
+        rdirSocket.on('connect', function () {
+          console.log('Remote connection successfully. Creating pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort)
         })
 
-        dstSocket.on('close', function () {
+        rdirSocket.on('close', function () {
           if (closeFrom === undefined) {
             closeFrom = 'rmte'
             console.log('Remote connection closed. Closing original connection...')
-            socket.end()
+            origSocket.end()
           } else {
-            console.log('Pipe ' + name + ' <=> ' + dstHost + ':' + dstPort + ' finished')
+            console.log('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
             delete connList[name]
           }
         })
 
         //Connection closed event handler
-        socket.on('close', function (had_error) {
+        origSocket.on('close', function (had_error) {
           if (closeFrom === undefined) {
             closeFrom = 'orig'
             console.log('Original connection closed. Closing remote connection...')
-            socket.end()
+            origSocket.end()
           } else {
-            console.log('Pipe ' + name + ' <=> ' + dstHost + ':' + dstPort + ' finished')
+            console.log('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
             delete connList[name]
           }
         })
 
         //Records connections
         connList[name] = {
-            sockets: [socket, dstSocket]
+            sockets: [origSocket, rdirSocket]
           , stamp: stamp
         }
     })
@@ -217,20 +220,9 @@ function _exit() {
     //Closing connections
     forEach(connList, function (item) {
         console.log('Ending connection ' + item.name + '...')
-        item.sockets.end()
+        item.sockets.origSocket.end()
+        item.sockets.rdirSocket.end()
     })
 
     console.log('NodeRelay terminated!')
-}
-
-function makeConnectionOptions(port, host, localAddress) {
-    var opt = {
-        port: port  //Remote port to connect to
-      , host: host  //Remote host to connect to
-    }
-    //Checks if defined a local address to get out
-    if (!isEmpty(localAddress) && localAddress !== '0.0.0.0') {
-        opt.localAddress = localAddress
-    }
-    return opt
 }
