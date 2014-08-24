@@ -11,13 +11,11 @@ module.exports = {
     , listenRetryTimes: 1     //Retry retryTimes times when trying to listen
     , connRetryTimeout: 1000  //Wait retryTimeout milliseconds before retry connection
     , connRetryTimes: 2       //Retry retryTimes times
-    , localHost: '127.0.0.1'  //IP for listening to connections
-    , pool: {/*               //Here you define the list of tunnels to create
+    , localHost: '127.0.0.1'  //IP for listening to origin connections
+    , pool: {/*               //Here you define the list of redirections
         <listen_at_port>: {
-            dstHost: '<to_host>'
-          , dstPort: <to_port>
-          , srcHost: '<from_host>'
-          , srcPort: <from_port>
+            rdirHost: '<to_host>'
+          , rdirPort: <to_port>
         }
     */}
 }

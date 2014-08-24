@@ -27,8 +27,8 @@ module.exports = {
       localHost: '0.0.0.0'
     , pool: {
         80: {
-            dstHost: '127.0.0.1'
-          , dstPort: 3000
+            rdirHost: '127.0.0.1'
+          , rdirPort: 3000
         }
     }
 }
@@ -59,10 +59,8 @@ module.exports = {
       localHost: '127.0.0.1'
     , pool: {/*
         <listen_at_port>: {
-            dstHost: '<to_host>'
-          , dstPort: <to_port>
-          , srcHost: '<from_host>'
-          , srcPort: <from_port>
+            rdirHost: '<to_host>'
+          , rdirPort: <to_port>
         }
     */}
 }
@@ -73,10 +71,8 @@ module.exports = {
 
 `pool` is a port's list that defines for each one the destination host and port:
 
-* `dstHost` is the destination host to connect to
-* `dstPort` is the port at `dstHost`
-* `srcHost` is the local interface from which connect to destination host
-* `srcPort` is the port at `srcHost`
+* `rdirHost` is the host to redirect to
+* `rdirPort` is the port at the host to redirect to
 
 ### Dynamic Forwarding/Redirection
 
@@ -96,12 +92,12 @@ module.exports = {
       localHost: 'mywanip'
     , pool: {
         81: {	//DEVICE 1
-            dstHost: '192.168.1.101'
-          , dstPort: 80
+            rdirHost: '192.168.1.101'
+          , rdirPort: 80
         }
       , 82: {	//DEVICE 2
-            dstHost: '192.168.1.102'
-          , dstPort: 80
+            rdirHost: '192.168.1.102'
+          , rdirPort: 80
         }
       , 3000: {	//FIXED PORT FOR DYNAMIC FORWARDING/REDIRECTION
         }
@@ -109,7 +105,7 @@ module.exports = {
 }
 ```
 
-## License 
+## License
 
 (The MIT License)
 
