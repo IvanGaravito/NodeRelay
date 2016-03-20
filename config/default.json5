@@ -1,4 +1,4 @@
-module.exports = {
+{
   logLevel: 0xF7,           // Log level. Value 0 means disable logging. Flags:
                               //	Info			0x01
                               //	Error			0x02
@@ -12,10 +12,10 @@ module.exports = {
   connRetryTimeout: 1000,   // Wait retryTimeout milliseconds before retry connection
   connRetryTimes: 2,        // Retry retryTimes times
   localHost: '127.0.0.1',   // IP for listening to origin connections
-  pool: {/*                // Here you define the list of redirections
-    <listen_at_port>: {
+  pool: {                   // Here you define the list of redirections
+    /* <listen_at_port>: {
         rdirHost: '<to_host>'
       , rdirPort: <to_port>
-    }*/
+    } */
   }
 }
