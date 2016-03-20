@@ -3,6 +3,7 @@
 /*
 	LIBRARIES
 */
+var config = require('config')
 var net = require('net')
 
 /*
@@ -11,16 +12,6 @@ var net = require('net')
 var forEach = require('./lib/forEach')
 var invoke = require('./lib/invoke')
 var isEmpty = require('./lib/isEmpty')
-var merge = require('./lib/merge')
-
-/*
-  CONFIG
-*/
-var cfg = require('./etc/config') || {}                     // User defined config
-var cfgDefaults = require('./etc/config.defaults') || {}    // Default config
-
-// Prepares configuration
-cfg = merge(cfg, cfgDefaults)
 
 /*
   GLOBAL VARS
@@ -32,7 +23,7 @@ var serverPool = {}         // List of servers accepting connections
 // Direct access vars
 var cfgPool
 
-cfgPool = cfg.pool
+cfgPool = config.pool
 
 /*
 	INITIALIZATION
@@ -53,7 +44,7 @@ console.log('Creating server pool...')
 forEach(cfgPool, function (params, port) {
   var server, serverName, serverOn, isDynamic, localHost
 
-  localHost = cfg.localHost
+  localHost = config.localHost
 
   console.log('Creating new server for ' + localHost + ':' + port + '...')
 
@@ -62,7 +53,7 @@ forEach(cfgPool, function (params, port) {
   serverOn = server.on.bind(server)
 
   // Sets maximum retry times
-  server.listenRetryTimes = cfg.listenRetryTimes
+  server.listenRetryTimes = config.listenRetryTimes
 
   // Sets server name to the port
   serverName = server.name = port
@@ -170,9 +161,9 @@ forEach(cfgPool, function (params, port) {
       var retries = this.listenRetryTimes--   // Retry times left
       // Can we retry?
       if (retries > 0) {
-        console.error('Address in use, retrying in ' + cfg.listenRetryTimeout + 'ms')
+        console.error('Address in use, retrying in ' + config.listenRetryTimeout + 'ms')
         // Schedule next retry
-        setTimeout(server.startListen, cfg.listenRetryTimeout)
+        setTimeout(server.startListen, config.listenRetryTimeout)
       } else {
         console.error('Cannot bind NodeRelay at ' + localHost + ':' + this.name + '. Exiting!')
         process.exit(1)
@@ -184,7 +175,7 @@ forEach(cfgPool, function (params, port) {
   server.startListen = function () {
     var name
     name = this.name
-    if (cfg.localHost === '0.0.0.0') {
+    if (config.localHost === '0.0.0.0') {
       console.log('Binding server to 0.0.0.0:' + name + '...')
       server.listen(name)
     } else {
