@@ -33,6 +33,7 @@ log.info('Initializing...')
 
 // Catches the process exit
 process.on('exit', _exit)
+process.on('SIGINT', _exit)
 
 // Sends uncaught exceptions to console
 process.on('uncaughtException', function (err) {
@@ -212,4 +213,5 @@ function _exit () {
   })
 
   log.info('NodeRelay terminated!')
+  setTimeout(process.exit, 1000)
 }
