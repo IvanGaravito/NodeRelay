@@ -1,0 +1,30 @@
+{
+  "name": "noderelay",
+  "version": "1.0.0",
+  "description": "A forwarder/redirector server inspired in WinRelay",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IvanGaravito/NodeRelay.git"
+  },
+  "keywords": [
+    "NodeRelay",
+    "forwarder",
+    "redirector",
+    "network",
+    "security",
+    "tunnel",
+    "nat"
+  ],
+  "author": "Ivan Garavito <ivangaravito@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/IvanGaravito/NodeRelay/issues"
+  },
+  "homepage": "https://github.com/IvanGaravito/NodeRelay#readme"
+}
