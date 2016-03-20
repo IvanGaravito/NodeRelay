@@ -39,7 +39,7 @@ ready, simply run the app:
 
 ``` bash
   $ cd /path/to/NodeRelay
-  $ node noderelay
+  $ node .
 ```
 
 ## Getting Started
