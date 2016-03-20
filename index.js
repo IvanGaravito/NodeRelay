@@ -10,7 +10,7 @@ var net = require('net')
 */
 var forEach = require('./lib/forEach')
   , invoke = require('./lib/invoke')
-  , isEmpty = require('./lib/invoke')
+  , isEmpty = require('./lib/isEmpty')
   , merge = require('./lib/merge')
 
 /*
