@@ -9,9 +9,10 @@ var net = require('net')
 /*
   FUNCTIONS
 */
-var forEach = require('./lib/forEach')
+var forEach = require('lodash/forEach')
+var isEmpty = require('lodash/isEmpty')
 var invoke = require('./lib/invoke')
-var isEmpty = require('./lib/isEmpty')
+var log = require('./lib/log')
 
 /*
   GLOBAL VARS
@@ -28,17 +29,17 @@ cfgPool = config.pool
 /*
 	INITIALIZATION
 */
-console.log('Initializing...')
+log.info('Initializing...')
 
 // Catches the process exit
 process.on('exit', _exit)
 
 // Sends uncaught exceptions to console
 process.on('uncaughtException', function (err) {
-  console.error(err)
+  log.error(err)
 })
 
-console.log('Creating server pool...')
+log.debug('Creating server pool...')
 
 // Creates server pool
 forEach(cfgPool, function (params, port) {
@@ -46,7 +47,7 @@ forEach(cfgPool, function (params, port) {
 
   localHost = config.localHost
 
-  console.log('Creating new server for ' + localHost + ':' + port + '...')
+  log.debug('Creating new server for ' + localHost + ':' + port + '...')
 
   // Creates a new server
   server = serverPool[port] = net.createServer()
@@ -60,12 +61,13 @@ forEach(cfgPool, function (params, port) {
 
   // Sets if server is used for dynamic redirection
   isDynamic = server.isDynamic = isEmpty(params)
+  log.debug('Server is', (isDynamic ? 'dynamic' : 'static'))
 
   // Sets server listening event handler
   serverOn('listening', function () {
     var address
     address = this.address()
-    console.log('NodeRelay iniciado y esperando conexiones en ' + address.address + ':' + address.port)
+    log.debug('NodeRelay started and waiting connections at ' + address.address + ':' + address.port)
   })
 
   // Sets server connection event handler
@@ -83,7 +85,7 @@ forEach(cfgPool, function (params, port) {
     name = origAddress + ':' + origPort   // Connection name is host:port
     serverName = server.name
 
-    console.log('New connection from ' + name)
+    log.connection('New connection from ' + name)
 
     // Checks if it's a server for dynamic redirection
     if (isDynamic) {
@@ -94,7 +96,7 @@ forEach(cfgPool, function (params, port) {
         // Uses the server port as the fixed port
         params.rdirPort = serverName
       } else {
-        console.log('Host ' + name + ' has not been tracked! Closing connection.')
+        log.error('Host ' + name + ' has not been tracked! Closing connection.')
         // Ends connection
         origSocket.end()
         return
@@ -119,16 +121,16 @@ forEach(cfgPool, function (params, port) {
 
     // Connection event handler
     rdirSocket.on('connect', function () {
-      console.log('Remote connection successfully. Creating pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort)
+      log.connection('Remote connection successfully. Creating pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort)
     })
 
     rdirSocket.on('close', function () {
       if (closeFrom === undefined) {
         closeFrom = 'rmte'
-        console.log('Remote connection closed. Closing original connection...')
+        log.connection('Remote connection closed. Closing original connection...')
         origSocket.end()
       } else {
-        console.log('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
+        log.connection('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
         delete connList[name]
       }
     })
@@ -137,10 +139,10 @@ forEach(cfgPool, function (params, port) {
     origSocket.on('close', function (had_error) {
       if (closeFrom === undefined) {
         closeFrom = 'orig'
-        console.log('Original connection closed. Closing remote connection...')
+        log.connection('Original connection closed. Closing remote connection...')
         origSocket.end()
       } else {
-        console.log('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
+        log.connection('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
         delete connList[name]
       }
     })
@@ -161,25 +163,25 @@ forEach(cfgPool, function (params, port) {
       var retries = this.listenRetryTimes--   // Retry times left
       // Can we retry?
       if (retries > 0) {
-        console.error('Address in use, retrying in ' + config.listenRetryTimeout + 'ms')
+        log.error('Address in use, retrying in ' + config.listenRetryTimeout + 'ms')
         // Schedule next retry
         setTimeout(server.startListen, config.listenRetryTimeout)
       } else {
-        console.error('Cannot bind NodeRelay at ' + localHost + ':' + this.name + '. Exiting!')
+        log.error('Cannot bind NodeRelay at ' + localHost + ':' + this.name + '. Exiting!')
         process.exit(1)
       }
     } else {
-      console.error(e)
+      log.error(e)
     }
   })
   server.startListen = function () {
     var name
     name = this.name
     if (config.localHost === '0.0.0.0') {
-      console.log('Binding server to 0.0.0.0:' + name + '...')
+      log.info('Binding server to 0.0.0.0:' + name + '...')
       server.listen(name)
     } else {
-      console.log('Binding server to ' + localHost + ':' + name + '...')
+      log.info('Binding server to ' + localHost + ':' + name + '...')
       server.listen(name, localHost)
     }
   }
@@ -188,26 +190,26 @@ forEach(cfgPool, function (params, port) {
 // Commands each serverat pool to start listening
 invoke(serverPool, 'startListen')
 
-console.log('NodeRelay started!')
+log.info('NodeRelay started!')
 
 /*
     APPLICATION FUNCTIONS
 */
 function _exit () {
-  console.log('Terminando NodeRelay...')
+  log.info('Terminando NodeRelay...')
 
   // Closing each server at pool
-  console.log('Closing servers...')
+  log.debug('Closing servers...')
   invoke(serverPool, 'close')
 
-  console.log('Closing connections...')
+  log.debug('Closing connections...')
 
   // Closing connections
   forEach(connList, function (item) {
-    console.log('Ending connection ' + item.name + '...')
+    log.debug('Ending connection ' + item.name + '...')
     item.sockets.origSocket.end()
     item.sockets.rdirSocket.end()
   })
 
-  console.log('NodeRelay terminated!')
+  log.info('NodeRelay terminated!')
 }

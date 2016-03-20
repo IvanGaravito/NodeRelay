@@ -4,7 +4,8 @@
   "description": "A forwarder/redirector server inspired in WinRelay",
   "main": "index.js",
   "dependencies": {
-    "config": "^1.19.0"
+    "config": "^1.19.0",
+    "lodash": "^4.6.1"
   },
   "devDependencies": {},
   "scripts": {
