@@ -121,8 +121,8 @@
 /*
 	LIBRARIES
 */
+var ASQ = require('asynquence')
 var config = require('config')
-var net = require('net')
 
 /*
   FUNCTIONS
@@ -130,6 +130,7 @@ var net = require('net')
 var forEach = require('lodash/forEach')
 var isEmpty = require('lodash/isEmpty')
 var invoke = require('./lib/invoke')
+var LocalServer = require('./lib/LocalServer')
 var log = require('./lib/log')
 
 /*
@@ -160,88 +161,59 @@ process.on('uncaughtException', function (err) {
 
 log.debug('Creating server pool...')
 
+function clientTrack (localPort, clientAddress) {
+  hostTrack[clientAddress] = localPort
+}
+
+function getDynamicServiceHost (clientAddress) {
+  // Checks if exists a previous record for this host
+  if (hostTrack.hasOwnProperty(clientAddress)) {
+    // Updates params to these that last server uses
+    var params = serverPool[hostTrack[clientAddress]]
+    // Uses the server port as the fixed port
+    return params.serviceHost
+  }
+  return
+}
+
+function redirectionTrack (localPort, clientSocket, serviceSocket) {
+  connList[localPort] = {
+    sockets: [clientSocket, serviceSocket],
+    timestamp: Date.now()
+  }
+}
+
 // Creates server pool
-forEach(cfgPool, function (params, port) {
-  var server, serverName, serverOn, isDynamic, localHost
-
-  localHost = config.localHost
-
-  log.debug('Creating new server for ' + localHost + ':' + port + '...')
-
-  // Creates a new server
-  server = serverPool[port] = net.createServer()
-  serverOn = server.on.bind(server)
-
-  // Sets maximum retry times
-  server.listenRetryTimes = config.listenRetryTimes
-
-  // Sets server name to the port
-  serverName = server.name = port
-
-  // Sets if server is used for dynamic redirection
-  isDynamic = server.isDynamic = isEmpty(params)
-  log.debug('Server is', (isDynamic ? 'dynamic' : 'static'))
-
-  // Sets server listening event handler
-  serverOn('listening', function () {
-    var address
-    address = this.address()
-    log.debug('NodeRelay started and waiting connections at ' + address.address + ':' + address.port)
-  })
-
-  // Sets server connection event handler
-  serverOn('connection', function (origSocket) {
-    var rdirOptions                   // Destiny connection options
-    var rdirSocket                    // Socket for destiny connection
-    var rdirHost, rdirPort, name, origAddress, origPort, stamp, closeFrom
-
-    // Local connection time stamp
-    stamp = new Date()
-
-    // Caches vars
-    origAddress = origSocket.remoteAddress
-    origPort = origSocket.remotePort
-    name = origAddress + ':' + origPort   // Connection name is host:port
-    serverName = server.name
-
-    log.connection('New connection from ' + name)
-
-    // Checks if it's a server for dynamic redirection
-    if (isDynamic) {
-      // Checks if exists a previous record for this host
-      if (hostTrack.hasOwnProperty(origAddress)) {
-        // Updates params to these that last server uses
-        params = cfgPool[hostTrack[origAddress]]
-        // Uses the server port as the fixed port
-        params.rdirPort = serverName
-      } else {
-        log.error('Host ' + name + ' has not been tracked! Closing connection.')
-        // Ends connection
-        origSocket.end()
-        return
-      }
-    } else {
-      // Tracks remote host to which port is connected
-      hostTrack[origAddress] = serverName
-    }
-
-    rdirHost = params.rdirHost
-    rdirPort = params.rdirPort
-
-    // Prepares socket options and makes redirection connection
-    rdirOptions = {
-      port: rdirPort, // Remote port to connect to
-      host: rdirHost  // Remote host to connect to
-    }
-    rdirSocket = net.connect(rdirOptions)
-
-    // Pipes local/destiny sockets
-    rdirSocket.pipe(origSocket).pipe(rdirSocket)
-
-    // Connection event handler
-    rdirSocket.on('connect', function () {
-      log.connection('Remote connection successfully. Creating pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort)
+config.pool.forEach(function (params) {
+  var sq
+  sq = ASQ(params)
+    .val(function prepareOptions (options) {
+      options.localHost = config.localHost
+      return options
     })
+    .val(function createServer (options) {
+      log.debug('Creating new server for "' + options.localHost + ':' + options.localPort + '"...')
+      return new LocalServer(options)
+    })
+    .val(function overrideServer (server) {
+      log.debug('Overriding server "' + server.localHost + ':' + server.localPort + '"...')
+      server.getDynamicServiceHost = getDynamicServiceHost.bind(server)
+    })
+    .then(function startServer (done, server) {
+      log.debug('Starting server for "' + server.localHost + ':' + server.localPort + '"...')
+      server.on('error', done.fail)
+      server.on('listening', done)
+      server.start()
+    })
+    .val(function addToPool (server) {
+      log.debug('Adding server "' + server.localHost + ':' + server.localPort + '" to pool...')
+      return serverPool[server.localPort] = server
+    })
+    .val(function linkEvents (server) {
+      server.on('client-connection', clientTrack)
+      server.on('service-redirection', redirectionTrack)
+    })
+
 
     rdirSocket.on('close', function () {
       if (closeFrom === undefined) {
@@ -266,14 +238,6 @@ forEach(cfgPool, function (params, port) {
       }
     })
 
-    // Records connections
-    connList[name] = {
-      sockets: [origSocket, rdirSocket],
-      stamp: stamp
-    }
-  })
-  // Server closed
-  serverOn('close', function () {
   })
   // Server error handling
   serverOn('error', function (e) {
@@ -293,17 +257,6 @@ forEach(cfgPool, function (params, port) {
       log.error(e)
     }
   })
-  server.startListen = function () {
-    var name
-    name = this.name
-    if (config.localHost === '0.0.0.0') {
-      log.info('Binding server to 0.0.0.0:' + name + '...')
-      server.listen(name)
-    } else {
-      log.info('Binding server to ' + localHost + ':' + name + '...')
-      server.listen(name, localHost)
-    }
-  }
 })
 
 // Commands each serverat pool to start listening
