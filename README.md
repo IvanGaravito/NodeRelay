@@ -302,11 +302,11 @@ LocalServer error definitions
 
 | Name | Type | Default | Description |
 | --- | --- | --- | --- |
-| ENOLOCALPORT | <code>UserError</code> | <code></code> | No local port defined |
-| ENOSERVICEPORT | <code>UserError</code> | <code></code> | No service port defined |
-| ESAMESERVICEANDLOCAL | <code>UserError</code> | <code></code> | Service and local are the same |
-| EUNTRACKEDCLIENT | <code>UserError</code> | <code></code> | Untracked client |
-| EDYNAMICSERVICE | <code>UserError</code> | <code></code> | getDynamicServiceHost must be implemented by the app |
+| ENOLOCALPORT | <code>[UserError](https://github.com/IvanGaravito/node-usererror)</code> | <code></code> | No local port defined |
+| ENOSERVICEPORT | <code>[UserError](https://github.com/IvanGaravito/node-usererror)</code> | <code></code> | No service port defined |
+| ESAMESERVICEANDLOCAL | <code>[UserError](https://github.com/IvanGaravito/node-usererror)</code> | <code></code> | Service and local are the same |
+| EUNTRACKEDCLIENT | <code>[UserError](https://github.com/IvanGaravito/node-usererror)</code> | <code></code> | Untracked client |
+| EDYNAMICSERVICE | <code>[UserError](https://github.com/IvanGaravito/node-usererror)</code> | <code></code> | getDynamicServiceHost must be implemented by the app |
 
 <a name="module_NodeRelay..LocalServer.getSocketRemoteParams"></a>
 
