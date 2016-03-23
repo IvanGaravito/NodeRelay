@@ -197,6 +197,12 @@ log.info('NodeRelay started!')
 function _exit () {
   var functions, keys, servers
 
+  // Sends uncaught exceptions to console
+  process.on('uncaughtException', function (err) {
+    log.error(err)
+    process.exit(2)
+  })
+
   log.info('Terminando NodeRelay...')
 
   servers = tracker.getServers()
