@@ -209,7 +209,7 @@ function _exit () {
   keys = Object.keys(servers)
 
   functions = keys.map(function (server) {
-    return function (done) { server.close(done) }
+    return function (done) { servers[server].close(done) }
   })
 
   // Closing each server at pool
