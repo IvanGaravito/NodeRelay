@@ -159,8 +159,10 @@ config.pool.forEach(function (params) {
     return new LocalServer(options)
   })
   .val(function overrideServer (server) {
-    log.debug('Overriding server "' + server.localHost + ':' + server.localPort + '"...')
-    server.getDynamicServiceHost = tracker.getDynamicServiceHost.bind(tracker)
+    if (server.isDynamicServer) {
+      log.debug('Overriding service redirection handler for "' + server.localHost + ':' + server.localPort + '"...')
+      server.getDynamicServiceHost = tracker.getDynamicServiceHost.bind(tracker)
+    }
     return server
   })
   .then(function startServer (done, server) {
