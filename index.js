@@ -161,12 +161,14 @@ config.pool.forEach(function (params) {
   .val(function overrideServer (server) {
     log.debug('Overriding server "' + server.localHost + ':' + server.localPort + '"...')
     server.getDynamicServiceHost = tracker.getDynamicServiceHost.bind(tracker)
+    return server
   })
   .then(function startServer (done, server) {
     log.debug('Starting server for "' + server.localHost + ':' + server.localPort + '"...')
     server.on('error', done.fail)
     server.on('listening', done)
     server.start()
+    return server
   })
   .val(function trackServer (server) {
     log.debug('Adding server "' + server.localHost + ':' + server.localPort + '" to pool...')
