@@ -125,28 +125,14 @@ var ASQ = require('asynquence')
 var config = require('config')
 
 /*
-  FUNCTIONS
+  FUNCTIONS AND CLASSES
 */
-var forEach = require('lodash/forEach')
-var isEmpty = require('lodash/isEmpty')
-var invoke = require('./lib/invoke')
 var LocalServer = require('./lib/LocalServer')
 var log = require('./lib/log')
+var tracker = require('./lib/tracker')
 
 /*
-  GLOBAL VARS
-*/
-var connList = []           // List of socket connections
-var hostTrack = {}          // Track of hosts connected to which server from the pool
-var serverPool = {}         // List of servers accepting connections
-
-// Direct access vars
-var cfgPool
-
-cfgPool = config.pool
-
-/*
-	INITIALIZATION
+	MODULE INITIALIZATION
 */
 log.info('Initializing...')
 
@@ -161,128 +147,82 @@ process.on('uncaughtException', function (err) {
 
 log.debug('Creating server pool...')
 
-function clientTrack (localPort, clientAddress) {
-  hostTrack[clientAddress] = localPort
-}
-
-function getDynamicServiceHost (clientAddress) {
-  // Checks if exists a previous record for this host
-  if (hostTrack.hasOwnProperty(clientAddress)) {
-    // Updates params to these that last server uses
-    var params = serverPool[hostTrack[clientAddress]]
-    // Uses the server port as the fixed port
-    return params.serviceHost
-  }
-  return
-}
-
-function redirectionTrack (localPort, clientSocket, serviceSocket) {
-  connList[localPort] = {
-    sockets: [clientSocket, serviceSocket],
-    timestamp: Date.now()
-  }
-}
-
 // Creates server pool
 config.pool.forEach(function (params) {
-  var sq
-  sq = ASQ(params)
-    .val(function prepareOptions (options) {
-      options.localHost = config.localHost
-      return options
-    })
-    .val(function createServer (options) {
-      log.debug('Creating new server for "' + options.localHost + ':' + options.localPort + '"...')
-      return new LocalServer(options)
-    })
-    .val(function overrideServer (server) {
-      log.debug('Overriding server "' + server.localHost + ':' + server.localPort + '"...')
-      server.getDynamicServiceHost = getDynamicServiceHost.bind(server)
-    })
-    .then(function startServer (done, server) {
-      log.debug('Starting server for "' + server.localHost + ':' + server.localPort + '"...')
-      server.on('error', done.fail)
-      server.on('listening', done)
-      server.start()
-    })
-    .val(function addToPool (server) {
-      log.debug('Adding server "' + server.localHost + ':' + server.localPort + '" to pool...')
-      return serverPool[server.localPort] = server
-    })
-    .val(function linkEvents (server) {
-      server.on('client-connection', clientTrack)
-      server.on('service-redirection', redirectionTrack)
-    })
-
-
-    rdirSocket.on('close', function () {
-      if (closeFrom === undefined) {
-        closeFrom = 'rmte'
-        log.connection('Remote connection closed. Closing original connection...')
-        origSocket.end()
-      } else {
-        log.connection('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
-        delete connList[name]
-      }
-    })
-
-    // Connection closed event handler
-    origSocket.on('close', function (had_error) {
-      if (closeFrom === undefined) {
-        closeFrom = 'orig'
-        log.connection('Original connection closed. Closing remote connection...')
-        origSocket.end()
-      } else {
-        log.connection('Pipe ' + name + ' <=> ' + rdirHost + ':' + rdirPort + ' finished')
-        delete connList[name]
-      }
-    })
-
+  ASQ(params)
+  .val(function prepareOptions (options) {
+    options.localHost = config.localHost
+    return options
   })
-  // Server error handling
-  serverOn('error', function (e) {
+  .val(function createServer (options) {
+    log.debug('Creating new server for "' + options.localHost + ':' + options.localPort + '"...')
+    return new LocalServer(options)
+  })
+  .val(function overrideServer (server) {
+    log.debug('Overriding server "' + server.localHost + ':' + server.localPort + '"...')
+    server.getDynamicServiceHost = tracker.getDynamicServiceHost.bind(tracker)
+  })
+  .then(function startServer (done, server) {
+    log.debug('Starting server for "' + server.localHost + ':' + server.localPort + '"...')
+    server.on('error', done.fail)
+    server.on('listening', done)
+    server.start()
+  })
+  .val(function trackServer (server) {
+    log.debug('Adding server "' + server.localHost + ':' + server.localPort + '" to pool...')
+    return tracker.trackServer(server)
+  })
+  .val(function linkEvents (server) {
+    server.on('client-connection', tracker.trackClient)
+    server.on('service-redirection', tracker.trackRedirection)
+  })
+  .or(function (err) {
     // Checks if cannot bind to port
-    if (e.code === 'EADDRINUSE') {
-      var retries = this.listenRetryTimes--   // Retry times left
-      // Can we retry?
-      if (retries > 0) {
-        log.error('Address in use, retrying in ' + config.listenRetryTimeout + 'ms')
-        // Schedule next retry
-        setTimeout(server.startListen, config.listenRetryTimeout)
-      } else {
-        log.error('Cannot bind NodeRelay at ' + localHost + ':' + this.name + '. Exiting!')
-        process.exit(1)
-      }
+    if (err.code === 'EADDRINUSE') {
+      log.error('Cannot bind NodeRelay at ' + params.localHost + ':' + params.localPort + '. Exiting!')
+      process.exit(1)
     } else {
-      log.error(e)
+      log.error(err)
     }
   })
 })
 
-// Commands each serverat pool to start listening
-invoke(serverPool, 'startListen')
-
 log.info('NodeRelay started!')
 
 /*
-    APPLICATION FUNCTIONS
+    EXIT HANDLING
 */
 function _exit () {
+  var functions, keys, servers
+
   log.info('Terminando NodeRelay...')
+
+  servers = tracker.getServers()
+  keys = Object.keys(servers)
+
+  functions = keys.map(function (server) {
+    return function (done) { server.close(done) }
+  })
 
   // Closing each server at pool
   log.debug('Closing servers...')
-  invoke(serverPool, 'close')
 
-  log.debug('Closing connections...')
+  ASQ()
+  .gate.apply(null, functions)
+  .val(function () {
+    var redirections = tracker.getRedirections()
 
-  // Closing connections
-  forEach(connList, function (item) {
-    log.debug('Ending connection ' + item.name + '...')
-    item.sockets.origSocket.end()
-    item.sockets.rdirSocket.end()
+    log.debug('Closing connections...')
+
+    // Closing connections
+    redirections.forEach(function (item) {
+      log.debug('Ending redirection ' + item.id + '...')
+      item.sockets.clientSocket.end()
+      item.sockets.serviceSocket.end()
+    })
   })
-
-  log.info('NodeRelay terminated!')
-  setTimeout(process.exit, 1000)
+  .val(function () {
+    log.info('NodeRelay terminated!')
+    setTimeout(process.exit, 500)
+  })
 }
