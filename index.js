@@ -205,7 +205,7 @@ function _exit () {
     process.exit(2)
   })
 
-  log.info('Terminando NodeRelay...')
+  log.info('Terminating NodeRelay...')
 
   servers = tracker.getServers()
   keys = Object.keys(servers)
