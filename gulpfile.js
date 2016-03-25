@@ -3,6 +3,7 @@ var gulp = require('gulp')
 var gutil = require('gulp-util')
 var concat = require('gulp-concat')
 var jsdoc2md = require('gulp-jsdoc-to-markdown')
+var mocha = require('gulp-mocha')
 var standard = require('gulp-standard')
 
 gulp.task('docs', function () {
@@ -21,4 +22,9 @@ gulp.task('standard', function () {
     .pipe(standard.reporter('default', {
       breakOnError: true
     }))
+})
+
+gulp.task('test', ['standard'], function () {
+  gulp.src('test/**/*.js')
+    .pipe(mocha())
 })
