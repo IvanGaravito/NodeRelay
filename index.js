@@ -213,13 +213,7 @@ function _exit () {
   functions = keys.map(function (server) {
     return function (done) { servers[server].close(done) }
   })
-
-  // Closing each server at pool
-  log.debug('Closing servers...')
-
-  ASQ()
-  .gate.apply(null, functions)
-  .val(function () {
+  functions.push(function (done) {
     var redirections = tracker.getRedirections()
 
     log.debug('Closing connections...')
@@ -227,10 +221,18 @@ function _exit () {
     // Closing connections
     redirections.forEach(function (item) {
       log.debug('Ending redirection ' + item.id + '...')
-      item.sockets.clientSocket.end()
-      item.sockets.serviceSocket.end()
+      item.sockets[0].end()
+      item.sockets[1].end()
     })
+
+    done()
   })
+
+  // Closing each server at pool
+  log.debug('Closing servers...')
+
+  ASQ()
+  .gate.apply(null, functions)
   .val(function () {
     log.info('NodeRelay terminated!')
     setTimeout(process.exit, 500)
