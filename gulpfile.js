@@ -18,4 +18,7 @@ gulp.task('docs', function () {
 gulp.task('standard', function () {
   return gulp.src(['./index.js', 'lib/**/*.js'])
     .pipe(standard())
+    .pipe(standard.reporter('default', {
+      breakOnError: true
+    }))
 })
