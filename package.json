@@ -23,7 +23,8 @@
     "rewire": "^2.5.1"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "coverage": "istanbul cover _mocha",
+    "test": "gulp test"
   },
   "repository": {
     "type": "git",

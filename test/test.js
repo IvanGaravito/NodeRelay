@@ -119,3 +119,87 @@ describe('log module', function () {
     })
   })
 })
+
+describe('tracker module', function () {
+  var tracker = rewire('../lib/tracker')
+
+  describe('internal collections', function () {
+    it('should return redirections object', function () {
+      var collection = tracker.getRedirections()
+      assert(collection === tracker.__get__('redirections'))
+    })
+
+    it('should return servers object', function () {
+      var collection = tracker.getServers()
+      assert(collection === tracker.__get__('servers'))
+    })
+  })
+
+  describe('id generation', function () {
+    it('should have format nnnnn-mmm', function () {
+      var id = tracker.__get__('getId')(12345)
+      assert(/^12345[-]\d{3}$/.test(id))
+    })
+
+    it('should have been padded', function () {
+      var id = tracker.__get__('getId')(80)
+      assert(/^00080[-]\d{3}$/.test(id))
+    })
+  })
+
+  describe('server tracking', function () {
+    var servers = [
+      {
+        localPort: 8080,
+        isDynamicServer: false
+      },
+      {
+        localPort: 8081,
+        isDynamicServer: false
+      },
+      {
+        localPort: 80,
+        isDynamicServer: true
+      }
+    ]
+    it('should track server', function () {
+      var localPort = servers[0].localPort
+      tracker.trackServer(servers[0])
+      assert(tracker.getServers()[localPort].localPort === localPort)
+    })
+
+    it('should keep all tracked servers', function () {
+      tracker.trackServer(servers[1])
+      tracker.trackServer(servers[2])
+      assert(Object.keys(tracker.getServers()).length === 3)
+    })
+  })
+
+  describe('client tracking', function () {
+    it('should track client', function () {
+      tracker.trackClient(8080, '127.0.0.1')
+      var clients = tracker.__get__('clients')
+      assert(clients['127.0.0.1'] === 8080)
+    })
+
+    it('should update tracked client', function () {
+      tracker.trackClient(8081, '127.0.0.1')
+      var clients = tracker.__get__('clients')
+      assert(clients['127.0.0.1'] === 8081)
+    })
+
+    it('should not track client when connencted to non-dynamic service', function () {
+      tracker.trackClient(80, '127.0.0.1')
+      var clients = tracker.__get__('clients')
+      assert(clients['127.0.0.1'] === 8081)
+    })
+  })
+
+  describe.skip('service redirections', function () {
+    // TODO: it's required mock-net module for testing
+  })
+})
+
+describe.skip('LocalServer class', function () {
+  // TODO: it's required mock-net module for testing
+})
