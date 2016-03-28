@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+
+var fs = require('fs')
+var path = require('path')
+var program = require('commander')
+var symbols = require('log-symbols')
+
+var cwd = process.cwd()
+var join = path.join
+
+program
+  .version(JSON.parse(fs.readFileSync(__dirname + '/../package.json', 'utf8')).version)
+  .usage('<command>')
+
+program.name = 'noderelay'
+
+program
+  .command('init <dir>')
+  .description('initialize config files at <dir>')
+  .action(function (dir) {
+    var mkdir = require('mkdirp')
+    mkdir.sync(dir)
+
+    var defaultConfig = fs.readFileSync(join(__dirname, '..', 'config/default.json5'))
+    fs.writeFileSync(join(dir, 'default.json5'), defaultConfig)
+    console.log(' ', symbols.success, 'copied "' + join(dir, 'default.json5') + '"')
+
+    var localConfig =
+'{\n' +
+'  logLevel: 0x17,\n' +
+'  localHost: \'0.0.0.0\',\n' +
+'  pool: [\n' +
+'    {\n' +
+'      localPort: 8080,\n' +
+'      serviceHost: \'192.168.1.1\',\n' +
+'      servicePort: 80\n' +
+'    }\n' +
+'  ]\n' +
+'}\n'
+    fs.writeFileSync(join(dir, 'local.json5'), localConfig)
+    console.log(' ', symbols.success, 'created "' + join(dir, 'local.json5') + '"')
+
+    console.log('')
+    console.log(' ', symbols.info, 'edit "' + join(dir, 'local.json5 to ') + '" to your needs. Read more at ' + JSON.parse(fs.readFileSync(__dirname + '/../package.json', 'utf8')).homepage)
+
+    process.exit(0)
+  })
+
+program
+  .command('start')
+  .description('start NodeRelay')
+  .action(function () {
+    var stats
+
+    console.log('Verifying config files...')
+    stats = fs.statSync(join(cwd, 'default.json5'))
+    if (!stats.isFile()) {
+      console.log(' ', symbols.error, 'file "default.json5" not found in current working dir:', cwd)
+      process.exit(11)
+    }
+    console.log(' ', symbols.success, 'file "default.json5" found!')
+
+    stats = fs.statSync(join(cwd, 'local.json5'))
+    if (!stats.isFile()) {
+      console.log(' ', symbols.error, 'file "local.json5" not found in current working dir:', cwd)
+      process.exit(12)
+    }
+    console.log(' ', symbols.success, 'file "local.json5" found!')
+
+    console.log('')
+    console.log(symbols.info, 'Starting NodeRelay...')
+    process.env['NODE_CONFIG_DIR'] = cwd
+    require('../')
+  })
+
+program.parse(process.argv)
+
+if (program.args.length === 0) {
+  program.outputHelp()
+  process.exit(10)
+}
