@@ -3,3 +3,5 @@ node_js:
   - "4.4"
 before_script:
   - npm install -g gulp
+after_success:
+  - gulp coveralls

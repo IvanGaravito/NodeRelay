@@ -1,6 +1,7 @@
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
 [![Build Status](https://travis-ci.org/IvanGaravito/node-usererror.svg?branch=master)](https://travis-ci.org/IvanGaravito/node-usererror)
-<!-- [![devDependency Status](https://david-dm.org/IvanGaravito/node-usererror/dev-status.svg)](https://david-dm.org/IvanGaravito/node-usererror#info=devDependencies) -->
+[![Dependency Status](https://david-dm.org/IvanGaravito/NodeRelay.svg)](https://david-dm.org/IvanGaravito/NodeRelay)
+[![devDependency Status](https://david-dm.org/IvanGaravito/NodeRelay/dev-status.svg)](https://david-dm.org/IvanGaravito/NodeRelay#info=devDependencies)
 [![NPM pkg](https://img.shields.io/npm/v/noderelay.svg)](https://www.npmjs.com/package/noderelay)
 [![NPM dm](https://img.shields.io/npm/dm/noderelay.svg)](https://www.npmjs.com/package/noderelay)
 [![Gratipay](https://img.shields.io/gratipay/IvanGaravito.svg)](https://gratipay.com/IvanGaravito)
