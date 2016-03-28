@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "description": "A forwarder/redirector server inspired in WinRelay",
   "main": "index.js",
+  "bin": {
+    "noderelay": "bin/noderelay"
+  },
   "dependencies": {
     "asynquence": "^0.9.0",
+    "commander": "^2.9.0",
     "config": "^1.19.0",
     "lodash": "^4.6.1",
+    "log-symbols": "^1.0.2",
+    "mkdirp": "^0.5.1",
     "node-usererror": "^1.0.2"
   },
   "devDependencies": {
