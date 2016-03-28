@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+
+var fs = require('fs')
+var path = require('path')
+var program = require('commander')
+
+var cwd = process.cwd()
+var join = path.join
+
+program
+  .version(JSON.parse(fs.readFileSync(__dirname + '/../package.json', 'utf8')).version)
+  .usage('<command>')
+
+program.name = 'noderelay'
+
+program
+  .command('init <dir>')
+  .description('initialize config files at <dir>')
+  .action(function (dir) {
+    var mkdir = require('mkdirp')
+    var symbols = require('log-symbols')
+    mkdir.sync(dir)
+
+    var defaultConfig = fs.readFileSync(join(__dirname, '..', 'config/default.json5'))
+    fs.writeFileSync(join(dir, 'default.json5'), defaultConfig)
+    console.log(' ', symbols.success, 'copied "' + join(dir, 'default.json5') + '"')
+
+    var localConfig =
+'{\n' +
+'  logLevel: 0x17,\n' +
+'  localHost: \'0.0.0.0\',\n' +
+'  pool: [\n' +
+'    {\n' +
+'      localPort: 8080,\n' +
+'      serviceHost: \'192.168.1.1\',\n' +
+'      servicePort: 80\n' +
+'    }\n' +
+'  ]\n' +
+'}\n'
+    fs.writeFileSync(join(dir, 'local.json5'), localConfig)
+    console.log(' ', symbols.success, 'created "' + join(dir, 'local.json5') + '"')
+
+    console.log('')
+    console.log(' ', symbols.info, 'edit "' + join(dir, 'local.json5 to ') + '" to your needs. Read more at ' + JSON.parse(fs.readFileSync(__dirname + '/../package.json', 'utf8')).homepage)
+
+    process.exit(0)
+  })
+
+program.parse(process.argv)
