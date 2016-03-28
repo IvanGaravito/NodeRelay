@@ -1,6 +1,6 @@
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
 [![Build Status](https://travis-ci.org/IvanGaravito/NodeRelay.svg?branch=master)](https://travis-ci.org/IvanGaravito/NodeRelay)
-[![Coverage Status](https://coveralls.io/repos/IvanGaravito/NodeRelay/badge.svg?branch=master)](https://coveralls.io/r/IvanGaravito/NodeRelay?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/IvanGaravito/NodeRelay/badge.svg?branch=master)](https://coveralls.io/github/IvanGaravito/NodeRelay?branch=master)
 [![Dependency Status](https://david-dm.org/IvanGaravito/NodeRelay.svg)](https://david-dm.org/IvanGaravito/NodeRelay)
 [![devDependency Status](https://david-dm.org/IvanGaravito/NodeRelay/dev-status.svg)](https://david-dm.org/IvanGaravito/NodeRelay#info=devDependencies)
 [![NPM pkg](https://img.shields.io/npm/v/noderelay.svg)](https://www.npmjs.com/package/noderelay)
